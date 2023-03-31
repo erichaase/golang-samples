@@ -109,9 +109,7 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 		msg = fmt.Sprintf("%s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.ErrorStatus.Code, n.ErrorStatus.Message)
 	}
 
-	postBody, err := json.Marshal(map[string]string{
-		"text": msg,
-	})
+	postBody, err := json.Marshal(map[string]string{"text": msg})
 	if err != nil {
 		m := fmt.Sprintf("Error: building slack message: %v", err)
 		log.Print(m)
@@ -128,9 +126,8 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(resp.Body)
-
 	if resp.StatusCode != http.StatusOK {
+		b, _ := ioutil.ReadAll(resp.Body)
 		m := fmt.Sprintf("Error: sending slack message: %d: %s", resp.StatusCode, string(b))
 		log.Print(m)
 		http.Error(w, m, http.StatusInternalServerError)
