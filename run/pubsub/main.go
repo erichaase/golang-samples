@@ -58,9 +58,21 @@ type PubSubMessage struct {
 	Subscription string `json:"subscription"`
 }
 
+type BQMessage struct {
+	State  string `json:"state"`
+	Params struct {
+		DestinationTableNameTemplate string `json:"destination_table_name_template"`
+	} `json:"params"`
+	ErrorStatus struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"errorStatus"`
+}
+
 // HelloPubSub receives and processes a Pub/Sub push message.
 func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 	var m PubSubMessage
+	var n BQMessage
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("ioutil.ReadAll: %v", err)
@@ -74,11 +86,19 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := string(m.Message.Data)
-	if name == "" {
-		name = "World"
+	if err := json.Unmarshal(m.Message.Data, &n); err != nil {
+		log.Printf("json.Unmarshal: %v", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
-	log.Printf("Hello %s!", name)
+
+	log.Printf("VERSION: 010")
+
+	if n.State == "SUCCEEDED" {
+		log.Printf("%s: %s", n.State, n.Params.DestinationTableNameTemplate)
+	} else {
+		log.Printf("%s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.ErrorStatus.Code, n.ErrorStatus.Message)
+	}
 }
 
 // [END run_pubsub_handler]
