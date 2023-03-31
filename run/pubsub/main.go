@@ -19,7 +19,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -92,12 +94,47 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("VERSION: 010")
+	url := os.Getenv("SLACK_WEBHOOK_URL")
+	if url == "" {
+		m := "Error: slack not configured"
+		log.Print(m)
+		http.Error(w, m, http.StatusInternalServerError)
+		return
+	}
 
+	msg := ""
 	if n.State == "SUCCEEDED" {
-		log.Printf("%s: %s", n.State, n.Params.DestinationTableNameTemplate)
+		msg = fmt.Sprintf("%s: %s", n.State, n.Params.DestinationTableNameTemplate)
 	} else {
-		log.Printf("%s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.ErrorStatus.Code, n.ErrorStatus.Message)
+		msg = fmt.Sprintf("%s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.ErrorStatus.Code, n.ErrorStatus.Message)
+	}
+
+	postBody, err := json.Marshal(map[string]string{
+		"text": msg,
+	})
+	if err != nil {
+		m := fmt.Sprintf("Error: building slack message: %v", err)
+		log.Print(m)
+		http.Error(w, m, http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(postBody))
+	if err != nil {
+		m := fmt.Sprintf("Error: sending slack message: %v", err)
+		log.Print(m)
+		http.Error(w, m, http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		m := fmt.Sprintf("Error: sending slack message: %d: %s", resp.StatusCode, string(b))
+		log.Print(m)
+		http.Error(w, m, http.StatusInternalServerError)
+		return
 	}
 }
 
