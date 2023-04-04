@@ -61,6 +61,7 @@ type PubSubMessage struct {
 }
 
 type BQMessage struct {
+	Name   string `json:"name"`
 	State  string `json:"state"`
 	Params struct {
 		DestinationTableNameTemplate string `json:"destination_table_name_template"`
@@ -81,6 +82,7 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+
 	// byte slice unmarshalling handles base64 decoding.
 	if err := json.Unmarshal(body, &m); err != nil {
 		log.Printf("json.Unmarshal: %v", err)
@@ -104,9 +106,9 @@ func HelloPubSub(w http.ResponseWriter, r *http.Request) {
 
 	msg := ""
 	if n.State == "SUCCEEDED" {
-		msg = fmt.Sprintf("%s: %s", n.State, n.Params.DestinationTableNameTemplate)
+		msg = fmt.Sprintf("%s: %s: %s", n.State, n.Params.DestinationTableNameTemplate, n.Name)
 	} else {
-		msg = fmt.Sprintf("%s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.ErrorStatus.Code, n.ErrorStatus.Message)
+		msg = fmt.Sprintf("%s: %s: %s: %d: %s", n.State, n.Params.DestinationTableNameTemplate, n.Name, n.ErrorStatus.Code, n.ErrorStatus.Message)
 	}
 
 	postBody, err := json.Marshal(map[string]string{"text": msg})
